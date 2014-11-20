@@ -1,0 +1,26 @@
+{
+  "name": "uinput",
+  "version": "0.0.0",
+  "description": "Linux uinput module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "uinput",
+    "linux",
+    "user",
+    "input"
+  ],
+  "author": "Santiago Gimeno <santiago.gimeno@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "array.prototype.fill": "^1.0.1",
+    "bindings": "^1.2.1",
+    "ioctl": "~0.0.7",
+    "nan": "^1.4.1",
+    "ref": "^0.3.2",
+    "ref-array": "^1.0.0",
+    "ref-struct": "^1.0.0"
+  }
+}
