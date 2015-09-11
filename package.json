@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": "https://github.com/santigimeno/node-uinput.git",
   "keywords": [
     "uinput",
     "linux",
@@ -18,7 +19,7 @@
     "array.prototype.fill": "^1.0.1",
     "bindings": "^1.2.1",
     "ioctl": "~0.0.7",
-    "nan": "^1.4.1",
+    "nan": "^2.0.9",
     "ref": "^0.3.2",
     "ref-array": "^1.0.0",
     "ref-struct": "^1.0.0"
