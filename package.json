@@ -18,10 +18,10 @@
   "dependencies": {
     "array.prototype.fill": "^1.0.1",
     "bindings": "^1.2.1",
-    "ioctl": "~0.0.7",
+    "ioctl": "~1.0.0",
     "nan": "^2.0.9",
-    "ref": "^0.3.2",
-    "ref-array": "^1.0.0",
-    "ref-struct": "^1.0.0"
+    "ref": "*",
+    "ref-array": "*",
+    "ref-struct": "*"
   }
 }
