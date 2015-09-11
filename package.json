@@ -16,12 +16,12 @@
   "author": "Santiago Gimeno <santiago.gimeno@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "array.prototype.fill": "^1.0.1",
-    "bindings": "^1.2.1",
+    "array.prototype.fill": "~1.0.1",
+    "bindings": "~1.2.1",
     "ioctl": "~1.0.0",
-    "nan": "^2.0.9",
-    "ref": "*",
-    "ref-array": "*",
-    "ref-struct": "*"
+    "nan": "~2.0.9",
+    "ref": "~1.1.0",
+    "ref-array": "~1.1.2",
+    "ref-struct": "~1.0.2"
   }
 }
