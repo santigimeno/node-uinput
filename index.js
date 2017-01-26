@@ -5,6 +5,7 @@ var ref = require('ref');
 var ArrayType = require('ref-array');
 var StructType = require('ref-struct');
 require('array.prototype.fill');
+var async = require('async');
 
 // struct input_id {
 //     __u16 bustype;
@@ -143,10 +144,49 @@ function key_event(stream, code, cb) {
     });
 }
 
+function emit_combo(stream, code, cb) {
+    /*
+        We save a copy array keys because function reverse()
+        change original array and we need this in the function
+        emit_combo.
+    */
+    var copy = code.slice();
+    var reverse = code.reverse();
+    async.eachSeries(
+        copy,
+        function(item, callback) {
+            send_event(stream, bindings.EV_KEY, item, 1, callback);
+            /*
+                First, we send event with value = 1 to
+                press the keys in array copy and generate combo.
+                Example:
+                    RightShift + key_a --- > A
+            */
+        },
+        function(err) {
+            if (err) {
+                return cb(err);
+            }
+
+            async.eachSeries(
+                reverse,
+                function(item, callback) {
+                    send_event(stream, bindings.EV_KEY, item, 0, callback);
+                    /*
+                        Last, we send event with value = 0 to release keys
+                        and do not keep them pressed.
+                    */
+                },
+                cb
+            );
+        }
+    );
+}
+
 module.exports = bindings;
 delete module.exports.input_event;
 module.exports.setup = setup;
 module.exports.create = create;
 module.exports.send_event = send_event;
 module.exports.key_event = key_event;
-
+module.exports.emit_combo = emit_combo;

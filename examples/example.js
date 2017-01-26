@@ -2,10 +2,11 @@ var uinput = require('../index');
 require('array.prototype.fill');
 
 var setup_options = {
-    EV_KEY : [ uinput.BTN_LEFT, uinput.KEY_H, uinput.KEY_E, uinput.KEY_L, uinput.KEY_O ],
+    EV_KEY : [ uinput.BTN_LEFT, uinput.KEY_H, uinput.KEY_E, uinput.KEY_L, uinput.KEY_O,
+               uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_SPACE ],
     EV_REL : [ uinput.REL_WHEEL, uinput.REL_HWHEEL ],
     EV_ABS : [ uinput.ABS_X, uinput.ABS_Y ]
-}
+};
 
 uinput.setup(setup_options, function(err, stream) {
     if (err) {
@@ -63,5 +64,12 @@ uinput.setup(setup_options, function(err, stream) {
                 });
             });
         }, 2000);
+
+        setTimeout(function() {
+            var keys = [ uinput.KEY_SPACE, uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_E ];
+            uinput.emit_combo(stream, keys, function(err) {
+                if (err) throw(err);
+            });
+        }, 3000);
     });
 });
