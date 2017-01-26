@@ -10,13 +10,14 @@ npm install uinput
 
 ## Example
 
-Say hello
+Say hello BYE
 
 ```
 var uinput = require('uinput');
 
 var setup_options = {
-    EV_KEY : [ uinput.KEY_H, uinput.KEY_E, uinput.KEY_L, uinput.KEY_O ]
+    EV_KEY : [ uinput.KEY_H, uinput.KEY_E, uinput.KEY_L, uinput.KEY_O,
+               uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_SPACE ]
 }
 
 uinput.setup(setup_options, function(err, stream) {
@@ -69,7 +70,14 @@ uinput.setup(setup_options, function(err, stream) {
                     });
                 });
             });
-        }, 1000);
+        }, 2000);
+
+        setTimeout(function() {
+            var keys = [ uinput.KEY_SPACE, uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_E ];
+            uinput.emit_combo(stream, keys, function(err) {
+                if (err) throw(err);
+            });
+        }, 3000);
     });
 });
 ```
@@ -123,3 +131,12 @@ It sends an event to the uinput device.
 * *callback* `Function`
 
 Wrapper over send_event to simulate key presses and mouse clicks.
+
+### emit_combo(stream, code, callback)
+
+* *stream* `WritableStream`
+* *code* `Array with any combination of keys`
+* *callback* `Function`
+
+It sends an event to the uinput device with the combination
+keys generated.

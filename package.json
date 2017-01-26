@@ -17,6 +17,7 @@
   "license": "ISC",
   "dependencies": {
     "array.prototype.fill": "~1.0.1",
+    "async": "~2.1.4",
     "bindings": "~1.2.1",
     "ioctl": "~1.0.0",
     "nan": "~2.3.2",
