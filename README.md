@@ -13,130 +13,109 @@ npm install uinput
 Say hello BYE
 
 ```
-var uinput = require('uinput');
+const UInput = require('../index');
 
-var setup_options = {
-    EV_KEY : [ uinput.KEY_H, uinput.KEY_E, uinput.KEY_L, uinput.KEY_O,
-               uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_SPACE ]
+const SETUP_OPTIONS = {
+    EV_KEY : [ UInput.BTN_LEFT, UInput.KEY_H, UInput.KEY_E, UInput.KEY_L, UInput.KEY_O,
+               UInput.KEY_CAPSLOCK, UInput.KEY_B, UInput.KEY_Y, UInput.KEY_SPACE ],
+    EV_REL : [ UInput.REL_WHEEL, UInput.REL_HWHEEL ],
+    EV_ABS : [ UInput.ABS_X, UInput.ABS_Y ]
+};
+
+const CREATE_OPTIONS = {
+    name: 'myuinput',
+    id: {
+        busType: UInput.BUS_VIRTUAL,
+        vendor: 0x1,
+        product: 0x1,
+        version: 1
+    },
+    absMax: [
+        UInput.Abs(UInput.ABS_X, 1024),
+        UInput.Abs(UInput.ABS_Y, 1024)
+    ]
+};
+
+async function sleep(time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
 }
 
-uinput.setup(setup_options, function(err, stream) {
-    if (err) {
-        throw(err);
+async function main() {
+    console.log('Setting up input');
+    const uinput = await UInput.setup(SETUP_OPTIONS);
+
+    await uinput.create(CREATE_OPTIONS);
+
+    console.log('Sleeping');
+    await sleep(2000);
+    console.log('Sending HELLO');
+    await uinput.keyEvent(UInput.KEY_H);
+    await uinput.keyEvent(UInput.KEY_E);
+    await uinput.keyEvent(UInput.KEY_L);
+    await uinput.keyEvent(UInput.KEY_L);
+    await uinput.keyEvent(UInput.KEY_O);
+
+    console.log('Sleeping');
+    await sleep(3000);
+    const keys = [ UInput.KEY_SPACE, UInput.KEY_CAPSLOCK, UInput.KEY_B, UInput.KEY_Y, UInput.KEY_E ];
+    console.log('Sending key combo');
+    await uinput.emitCombo(keys);
+    console.log('Done');
+}
+
+(async() => {
+    try {
+        await main();
+    } catch (err) {
+        console.log(err);
     }
-
-    var create_options = {
-        name : 'myuinput',
-        id : {
-            bustype : uinput.BUS_VIRTUAL,
-            vendor : 0x1,
-            product : 0x1,
-            version : 1
-        }
-    };
-
-    uinput.create(stream, create_options, function(err) {
-        if (err) {
-            throw(err);
-        }
-
-        setTimeout(function() {
-            uinput.key_event(stream, uinput.KEY_H, function(err) {
-                if (err) {
-                    throw(err);
-                }
-
-                uinput.key_event(stream, uinput.KEY_E, function(err) {
-                    if (err) {
-                        throw(err);
-                    }
-
-                    uinput.key_event(stream, uinput.KEY_L, function(err) {
-                        if (err) {
-                            throw(err);
-                        }
-
-                        uinput.key_event(stream, uinput.KEY_L, function(err) {
-                            if (err) {
-                                throw(err);
-                            }
-
-                            uinput.key_event(stream, uinput.KEY_O, function(err) {
-                                if (err) {
-                                    throw(err);
-                                }
-                            });
-                        });
-                    });
-                });
-            });
-        }, 2000);
-
-        setTimeout(function() {
-            var keys = [ uinput.KEY_SPACE, uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_E ];
-            uinput.emit_combo(stream, keys, function(err) {
-                if (err) throw(err);
-            });
-        }, 3000);
-    });
-});
+})();
 ```
 
 ## API
 
-### uinput.setup(options, callback)
+### async UInput.setup(options)
 
 * *options* `Object`
     * *event_type* where event_type can be `EV_KEY`, `EV_ABS`, `EV_REL`, etc. and it's an `Array` with the different events we want the uinput device to handle
-* *callback* `Function` called when the setup operation ends
-    * *error* `Error`
-    * *stream* `WritableStream` to the uinput device.
+* Returns a UInputClass on success
 
 It configures the uinput device we are about to create.
 
-### uinput.create(stream, options, callback)
+### async UInputClass.create(options)
 
-* *stream* `WritableStream`
 * *options* `Object`. See `uinput_user_dev` definition in linux/uinput.h
     * *name* `String` with the name of the device
     * *id* `Object`
-        * *bustype* `Number`
+        * *busType* `Number`
         * *vendor* `Number`
         * *product* `Number`
         * *version* `Number`
-    * *ff_effects_max* `Number`
-    * *absmax* `Array` of `Numbers` of size: `uinput.ABS_CNT`
-    * *absmin* `Array` of `Numbers` of size: `uinput.ABS_CNT`
-    * *absfuzz* `Array` of `Numbers` of size: `uinput.ABS_CNT`
-    * *absflat* `Array` of `Numbers` of size: `uinput.ABS_CNT`
-* *callback* `Function` called when the creation operation ends
-    * *error* `Error`
+    * *ffEffectsMax* `Number`
+    * *absMax* `Array` of `Numbers` of size: `UInput.ABS_CNT`
+    * *absMin* `Array` of `Numbers` of size: `UInput.ABS_CNT`
+    * *absFuzz* `Array` of `Numbers` of size: `UInput.ABS_CNT`
+    * *absFlat* `Array` of `Numbers` of size: `UInput.ABS_CNT`
 
 It creates the uinput device.
 
-### send_event(stream, type, code, value, callback)
+### async UInputClass.sendEvent(type, code, value)
 
-* *stream* `WritableStream`
 * *type* `Number`
 * *code* `Number`
 * *value* `Number`
-* *callback* `Function`
 
 It sends an event to the uinput device.
 
-### key_event(stream, code, callback)
+### async UInputClass.keyEvent(code)
 
-* *stream* `WritableStream`
 * *code* `Number`
-* *callback* `Function`
 
 Wrapper over send_event to simulate key presses and mouse clicks.
 
-### emit_combo(stream, code, callback)
+### async UInputClass.emitCombo(code)
 
-* *stream* `WritableStream`
 * *code* `Array with any combination of keys`
-* *callback* `Function`
 
 It sends an event to the uinput device with the combination
 keys generated.

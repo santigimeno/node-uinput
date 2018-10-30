@@ -34,7 +34,12 @@ NAN_METHOD(InputEvent) {
         Nan::CopyBuffer(ev_buf, sizeof(ev)).ToLocalChecked());
 }
 
-void Initialize(Local<Object> target) {
+void Initialize(Local<Object> input) {
+    v8::Local<v8::Object> target = Nan::New<v8::Object>();
+    input->Set(Nan::New("events").ToLocalChecked(), target);
+    input->Set(Nan::New("input_event").ToLocalChecked(),
+                Nan::New<FunctionTemplate>(InputEvent)->GetFunction());
+
     /* input.h */
     target->Set(Nan::New("EV_SYN").ToLocalChecked(),
                 Nan::New(EV_SYN));
@@ -1430,10 +1435,6 @@ void Initialize(Local<Object> target) {
                 Nan::New(UI_FF_ERASE));
     target->Set(Nan::New("UINPUT_MAX_NAME_SIZE").ToLocalChecked(),
                 Nan::New(UINPUT_MAX_NAME_SIZE));
-
-
-    target->Set(Nan::New("input_event").ToLocalChecked(),
-                Nan::New<FunctionTemplate>(InputEvent)->GetFunction());
 }
 }
 
