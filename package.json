@@ -4,7 +4,7 @@
   "description": "Linux uinput module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node-gyp configure build"
   },
   "repository": "https://github.com/santigimeno/node-uinput.git",
   "keywords": [
@@ -16,8 +16,11 @@
   "author": "Santiago Gimeno <santiago.gimeno@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "bindings": "^1.2.1",
+    "bindings": "^1.5.0",
     "ioctl": "^2.0.2",
     "nan": "^2.14.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^6.1.0"
   }
 }
