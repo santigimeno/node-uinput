@@ -21,7 +21,7 @@ function InputId(options) {
     buffer.writeUInt16LE(options.product, 4);
     buffer.writeUInt16LE(options.version, 6);
     return buffer;
-};
+}
 
 function DeviceName(name) {
     const buf = Buffer.alloc(Events.UINPUT_MAX_NAME_SIZE).fill(0);
@@ -71,19 +71,6 @@ function UInputUserDev(options) {
     ]);
 }
 
-const ioctls = [
-    Events.UI_SET_KEYBIT,
-    Events.UI_SET_RELBIT,
-    Events.UI_SET_ABSBIT,
-    Events.UI_SET_MSCBIT,
-    Events.UI_SET_LEDBIT,
-    Events.UI_SET_SNDBIT,
-    Events.UI_SET_FFBIT,
-    Events.UI_SET_PHYS,
-    Events.UI_SET_SWBIT,
-    Events.UI_SET_PROPBIT
-];
-
 class UInput {
     constructor(stream) {
         this.stream = stream;
@@ -122,15 +109,28 @@ class UInput {
         });
     }
 
-    async sendEvent(type, code, value) {
+    /**
+     * @param type
+     * @param code
+     * @param value
+     * @param syn
+     * @returns {Promise<void>}
+     */
+    async sendEvent(type, code, value, syn = true) {
         await this.write(InputEvent(type, code, value));
-        await this.write(InputEvent(Events.EV_SYN, Events.SYN_REPORT, 0));
+
+        if (syn) {
+            await this.write(InputEvent(Events.EV_SYN, Events.SYN_REPORT, 0));
+        }
     }
 
-    async keyEvent(code) {
+    async keyEvent(code, press = true) {
         /* press / click */
-        await this.sendEvent(Events.EV_KEY, code, 1);
-        await this.sendEvent(Events.EV_KEY, code, 0);
+        if (press) {
+            await this.sendEvent(Events.EV_KEY, code, 1);
+        } else {
+            await this.sendEvent(Events.EV_KEY, code, 0);
+        }
     }
 
     async emitCombo(code) {
@@ -143,7 +143,7 @@ class UInput {
             await this.sendEvent(Events.EV_KEY, code[i], 0);
         }
     }
-};
+}
 
 async function setup(options) {
     return new Promise((resolve, reject) => {
@@ -152,18 +152,18 @@ async function setup(options) {
         stream.once('error', reject);
         stream.on('open', (fd) => {
             const events = Object.keys(options);
-            for (let i = 0; i < events.length; i++) {
-                const ev = events[i];
-                if (ioctl(fd, Events.UI_SET_EVBIT, Events[ev])) {
-                    throw new Error("Could not listen for event: " + ev);
-                }
-                for (let j = 0; j < (options[ev]).length; j++) {
-                    const val = options[ev][j];
-                    if (ioctl(fd, ioctls[Events[ev] - 1], val)) {
-                        throw new Error("Could not setup: " + val);
+
+            events.forEach((event) => {
+                const indexEvent = Events[event];
+                const values = options[event];
+
+                (values || []).forEach(value => {
+                    if (ioctl(fd, indexEvent, value) || undefined === indexEvent) {
+                        throw new Error("Could not setup: " + event + ': ' + value);
                     }
-                }
-            }
+                });
+            });
+
             stream.removeAllListeners('error');
             resolve(uinput);
         });
