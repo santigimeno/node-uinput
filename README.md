@@ -4,13 +4,13 @@ Linux uinput nodejs wrapper
 
 ## Installation
 
-```
+```bash
 npm install uinput
 ```
 
 ## Example
 
-```
+```js
 const UInput = require('uinput2');
 
 const SETUP_OPTIONS = {
