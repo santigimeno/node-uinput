@@ -1,11 +1,11 @@
-var fs = require('fs');
-var bindings = require('bindings')('uinput');
-var ioctl = require('ioctl');
-var ref = require('ref');
-var ArrayType = require('ref-array');
-var StructType = require('ref-struct');
-require('array.prototype.fill');
-var async = require('async');
+const fs = require('fs');
+const bindings = require('bindings')('uinput');
+const ioctl = require('ioctl');
+
+const InputEvent = bindings.input_event;
+const Events = bindings.events;
+
+// Throughout this file there's an assumption that the host machine is little endian.
 
 // struct input_id {
 //     __u16 bustype;
@@ -14,179 +14,162 @@ var async = require('async');
 //     __u16 version;
 // };
 
-var InputId = StructType({
-    bustype : ref.types.uint16,
-    vendor : ref.types.uint16,
-    product : ref.types.uint16,
-    version : ref.types.uint16,
-});
-
-// struct uinput_user_dev {
-//     char name[UINPUT_MAX_NAME_SIZE];
-//     struct input_id id;
-//     int ff_effects_max;
-//     int absmax[ABS_CNT];
-//     int absmin[ABS_CNT];
-//     int absfuzz[ABS_CNT];
-//     int absflat[ABS_CNT];
-// };
-
-var DeviceName = ArrayType(ref.types.char, bindings.UINPUT_MAX_NAME_SIZE);
-var AbsArray = ArrayType(ref.types.int, bindings.ABS_CNT);
-var UInputUserDev = StructType({
-    name : DeviceName,
-    id : InputId,
-    ff_effects_max : ref.types.int,
-    absmax : AbsArray,
-    absmin : AbsArray,
-    absfuzz : AbsArray,
-    absflat : AbsArray
-});
-
-var ioctls = [
-    undefined,
-    bindings.UI_SET_KEYBIT,
-    bindings.UI_SET_RELBIT,
-    bindings.UI_SET_ABSBIT,
-    bindings.UI_SET_MSCBIT,
-    bindings.UI_SET_LEDBIT,
-    bindings.UI_SET_SNDBIT,
-    bindings.UI_SET_FFBIT,
-    bindings.UI_SET_PHYS,
-    bindings.UI_SET_SWBIT,
-    bindings.UI_SET_PROPBIT
-];
-
-
-function setup(options, cb) {
-    var stream = fs.createWriteStream('/dev/uinput');
-    stream.once('error', cb);
-    stream.on('open', function(fd) {
-        var events = Object.keys(options);
-        for (var i = 0; i < events.length; ++ i) {
-            var ev = events[i];
-            if (ioctl(fd, bindings.UI_SET_EVBIT, bindings[ev])) {
-                return cb(new Error("Could not listen for event: " + ev));
-            }
-
-            for (var j = 0; j < (options[ev]).length; ++ j) {
-                var val = options[ev][j];
-                if (ioctl(fd, ioctls[bindings[ev]], val)) {
-                    return cb(new Error("Could not setup: " + val));
-                }
-            }
-        }
-
-        stream.removeAllListeners('error');
-        cb(undefined, stream);
-    });
+function InputId(options) {
+    const buffer = Buffer.alloc(4 * 2);
+    buffer.writeUInt16LE(options.busType, 0);
+    buffer.writeUInt16LE(options.vendor, 2);
+    buffer.writeUInt16LE(options.product, 4);
+    buffer.writeUInt16LE(options.version, 6);
+    return buffer;
 }
 
-function create(stream, options, cb) {
+function DeviceName(name) {
+    const buf = Buffer.alloc(Events.UINPUT_MAX_NAME_SIZE).fill(0);
+    if (name) {
+        buf.write(name, 0);
+    }
+    return buf;
+}
 
-    if (!options.id) {
-        return cb(new Error('Device id params is mandatory'));
+function AbsArray(abs) {
+    const buf = Buffer.alloc(Events.ABS_CNT * 4).fill(0);
+    if (abs) {
+        for (let i = 0; i < abs.length; i++) {
+            buf.writeUInt32LE(abs[i].value, abs[i].offset * 4);
+        }
+    }
+    return buf;
+}
+
+const Abs = (offset, value) => {
+    return {
+        offset: offset,
+        value: value
+    };
+};
+
+function UInputUserDev(options) {
+    const name = DeviceName(options.name);
+    const id = InputId(options.id);
+
+    const ffEffectsMax = Buffer.alloc(4);
+    ffEffectsMax.writeUInt32LE(options.ffEffectsMax || 0, 0);
+
+    const absMax = AbsArray(options.absMax);
+    const absMin = AbsArray(options.absMin);
+    const absFuzz = AbsArray(options.absFuzz);
+    const absFlat = AbsArray(options.absFlat);
+
+    return Buffer.concat([
+        name,
+        id,
+        ffEffectsMax,
+        absMax,
+        absMin,
+        absFuzz,
+        absFlat
+    ]);
+}
+
+class UInput {
+    constructor(stream) {
+        this.stream = stream;
     }
 
-    var zero_array = new Array(bindings.ABS_CNT).fill(0);
-    var user_dev = new UInputUserDev({
-        id : options.id,
-        ff_effects_max : options.ff_effects_max || 0,
-        absmax : options.absmax ? new AbsArray(options.absmax) : new AbsArray(zero_array),
-        absmin : options.absmin ? new AbsArray(options.absmin) : new AbsArray(zero_array),
-        absfuzz : options.absfuzz ? new AbsArray(options.absfuzz) : new AbsArray(zero_array),
-        absflat : options.absflat ? new AbsArray(options.absflat) : new AbsArray(zero_array)
-    });
+    async write(data) {
+        return new Promise((resolve, reject) => {
+            this.stream.once('error', reject);
+            this.stream.write(data, (err) => {
+                this.stream.removeAllListeners('error');
+                if (err) {
+                    return reject(err);
+                }
+                resolve();
+            });
+        });
+    }
 
-    var name = new Buffer(new Array(80));
-    name.write(options.name);
-    user_dev.name = new DeviceName(name);
-
-    stream.once('error', cb);
-    stream.write(user_dev.ref(), function(err) {
-        if (err) {
-            return cb(err);
+    async create(options) {
+        if (!options.id) {
+            throw new Error('Device id params is mandatory');
         }
 
-        stream.removeAllListeners('error');
-        if (ioctl(stream.fd, bindings.UI_DEV_CREATE)) {
-            cb(new Error('Could not create uinput device'));
+        const userDev = UInputUserDev(options);
+
+        return new Promise((resolve, reject) => {
+            this.stream.once('error', reject);
+            this.stream.write(userDev, (err) => {
+                if (ioctl(this.stream.fd, Events.UI_DEV_CREATE)) {
+                    throw new Error('Could not create uinput device');
+                }
+
+                this.stream.removeAllListeners('error');
+                resolve();
+            });
+        });
+    }
+
+    /**
+     * @param type
+     * @param code
+     * @param value
+     * @param syn
+     * @returns {Promise<void>}
+     */
+    async sendEvent(type, code, value, syn = true) {
+        await this.write(InputEvent(type, code, value));
+
+        if (syn) {
+            await this.write(InputEvent(Events.EV_SYN, Events.SYN_REPORT, 0));
+        }
+    }
+
+    async keyEvent(code, press = true) {
+        /* press / click */
+        if (press) {
+            await this.sendEvent(Events.EV_KEY, code, 1);
         } else {
-            cb();
+            await this.sendEvent(Events.EV_KEY, code, 0);
         }
+    }
+
+    async emitCombo(code) {
+        // Press each of the keys in series
+        for (let i = 0; i < code.length; i++) {
+            await this.sendEvent(Events.EV_KEY, code[i], 1);
+        }
+        // Release them in reverse
+        for (let i = code.length; i-- > 0;) {
+            await this.sendEvent(Events.EV_KEY, code[i], 0);
+        }
+    }
+}
+
+async function setup(options) {
+    return new Promise((resolve, reject) => {
+        const stream = fs.createWriteStream('/dev/uinput');
+        const uinput = new UInput(stream);
+        stream.once('error', reject);
+        stream.on('open', (fd) => {
+            const events = Object.keys(options);
+
+            events.forEach((event) => {
+                const indexEvent = Events[event];
+                const values = options[event];
+
+                (values || []).forEach(value => {
+                    if (ioctl(fd, indexEvent, value) || undefined === indexEvent) {
+                        throw new Error("Could not setup: " + event + ': ' + value);
+                    }
+                });
+            });
+
+            stream.removeAllListeners('error');
+            resolve(uinput);
+        });
     });
 }
 
-var input_event = bindings.input_event;
-
-function send_event(stream, type, code, value, cb) {
-    var ev = input_event(type, code, value);
-    stream.once('error', cb);
-    stream.write(ev, function(err) {
-        if (err) {
-            return cb(err);
-        }
-
-        ev = input_event(bindings.EV_SYN, bindings.SYN_REPORT, 0);
-        stream.write(ev, cb);
-    });
-}
-
-function key_event(stream, code, cb) {
-    /* press / click */
-    send_event(stream, bindings.EV_KEY, code, 1, function(err) {
-        if (err) {
-            return cb(err);
-        }
-
-        /* release / unclick */
-        send_event(stream, bindings.EV_KEY, code, 0, cb);
-    });
-}
-
-function emit_combo(stream, code, cb) {
-    /*
-        We save a copy array keys because function reverse()
-        change original array and we need this in the function
-        emit_combo.
-    */
-    var copy = code.slice();
-    var reverse = code.reverse();
-    async.eachSeries(
-        copy,
-        function(item, callback) {
-            send_event(stream, bindings.EV_KEY, item, 1, callback);
-            /*
-                First, we send event with value = 1 to
-                press the keys in array copy and generate combo.
-                Example:
-                    RightShift + key_a --- > A
-            */
-        },
-        function(err) {
-            if (err) {
-                return cb(err);
-            }
-
-            async.eachSeries(
-                reverse,
-                function(item, callback) {
-                    send_event(stream, bindings.EV_KEY, item, 0, callback);
-                    /*
-                        Last, we send event with value = 0 to release keys
-                        and do not keep them pressed.
-                    */
-                },
-                cb
-            );
-        }
-    );
-}
-
-module.exports = bindings;
-delete module.exports.input_event;
+module.exports = Events;
+module.exports.Abs = Abs;
 module.exports.setup = setup;
-module.exports.create = create;
-module.exports.send_event = send_event;
-module.exports.key_event = key_event;
-module.exports.emit_combo = emit_combo;

@@ -1,75 +1,94 @@
-var uinput = require('../index');
-require('array.prototype.fill');
+const UInput = require('node-uinput');
 
-var setup_options = {
-    EV_KEY : [ uinput.BTN_LEFT, uinput.KEY_H, uinput.KEY_E, uinput.KEY_L, uinput.KEY_O,
-               uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_SPACE ],
-    EV_REL : [ uinput.REL_WHEEL, uinput.REL_HWHEEL ],
-    EV_ABS : [ uinput.ABS_X, uinput.ABS_Y ]
+const SETUP_OPTIONS = {
+    UI_SET_EVBIT:  [
+        UInput.EV_KEY,
+        UInput.EV_SYN,
+        UInput.EV_REL,
+    ],
+    UI_SET_RELBIT: [
+        UInput.REL_X,
+        UInput.REL_Y,
+        UInput.REL_WHEEL,
+        UInput.REL_HWHEEL,
+    ],
+    UI_SET_KEYBIT: [
+        UInput.BTN_LEFT,
+        UInput.BTN_RIGHT,
+        UInput.BTN_MIDDLE,
+        UInput.BTN_SIDE,
+        UInput.BTN_EXTRA,
+    ],
 };
 
-uinput.setup(setup_options, function(err, stream) {
-    if (err) {
-        throw(err);
-    }
+const CREATE_OPTIONS = {
+    name: 'Wine Launcher Mouse Emulation',
+    id:   {
+        busType: UInput.BUS_USB,
+        vendor:  0x0,
+        product: 0x0,
+        version: 1
+    },
+};
 
-    var absmax = new Array(uinput.ABS_CNT).fill(0);
-    absmax[uinput.ABS_X] = 1024;
-    absmax[uinput.ABS_Y] = 1024;
-
-    var create_options = {
-        name : 'myuinput',
-        id : {
-            bustype : uinput.BUS_VIRTUAL,
-            vendor : 0x1,
-            product : 0x1,
-            version : 1
-        },
-        absmax : absmax
+export default class UInputMouse {
+    static map = {
+        left:   UInput.BTN_LEFT,
+        right:  UInput.BTN_RIGHT,
+        middle: UInput.BTN_MIDDLE,
     };
+    runtime = Promise.resolve();
+    delay = 2;
+    device;
 
-    uinput.create(stream, create_options, function(err) {
-        if (err) {
-            throw(err);
+    async createDevice() {
+        if (undefined !== this.device) {
+            return this.device;
         }
 
-        setTimeout(function() {
-            uinput.key_event(stream, uinput.KEY_H, function(err) {
-                if (err) {
-                    throw(err);
-                }
+        this.device = await UInput.setup(SETUP_OPTIONS);
+        this.device.create(CREATE_OPTIONS);
 
-                uinput.key_event(stream, uinput.KEY_E, function(err) {
-                    if (err) {
-                        throw(err);
-                    }
+        return this.device;
+    }
 
-                    uinput.key_event(stream, uinput.KEY_L, function(err) {
-                        if (err) {
-                            throw(err);
-                        }
+    async sleep(time) {
+        return new Promise((resolve) => setTimeout(resolve, time));
+    }
 
-                        uinput.key_event(stream, uinput.KEY_L, function(err) {
-                            if (err) {
-                                throw(err);
-                            }
+    /**
+     * @param {number} x
+     * @param {number} y
+     */
+    moveMouse(x, y) {
+        this.createDevice().then(device => {
+            this.runtime = this.runtime
+                .then(() => device.sendEvent(UInput.EV_REL, UInput.REL_X, x, false))
+                .then(() => device.sendEvent(UInput.EV_REL, UInput.REL_Y, y, true))
+                .then(() => this.sleep(this.delay));
+        });
+    }
 
-                            uinput.key_event(stream, uinput.KEY_O, function(err) {
-                                if (err) {
-                                    throw(err);
-                                }
-                            });
-                        });
-                    });
-                });
-            });
-        }, 2000);
 
-        setTimeout(function() {
-            var keys = [ uinput.KEY_SPACE, uinput.KEY_CAPSLOCK, uinput.KEY_B, uinput.KEY_Y, uinput.KEY_E ];
-            uinput.emit_combo(stream, keys, function(err) {
-                if (err) throw(err);
-            });
-        }, 3000);
-    });
-});
+    /**
+     * @param {string} key [left, right, middle]
+     * @param {boolean} pressed
+     */
+    keyToggle(key, pressed) {
+        if (undefined === UInputMouse.map[key]) {
+            return;
+        }
+
+        this.createDevice().then(device => {
+            this.runtime = this.runtime
+                .then(() => device.keyEvent(UInputMouse.map[key], pressed))
+                .then(() => this.sleep(this.delay));
+        });
+    }
+}
+
+const device = new UInputMouse();
+
+device.moveMouse(0, 100);
+device.keyToggle('right', true);
+device.keyToggle('right', false);

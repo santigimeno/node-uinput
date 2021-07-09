@@ -1,12 +1,12 @@
 {
-  "name": "uinput",
-  "version": "1.1.1",
+  "name": "uinput2",
+  "version": "1.0.2",
   "description": "Linux uinput module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node-gyp configure build"
   },
-  "repository": "https://github.com/santigimeno/node-uinput.git",
+  "repository": "https://github.com/timstableford/node-uinput.git",
   "keywords": [
     "uinput",
     "linux",
@@ -16,13 +16,11 @@
   "author": "Santiago Gimeno <santiago.gimeno@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "array.prototype.fill": "~1.0.1",
-    "async": "~2.1.4",
-    "bindings": "~1.2.1",
-    "ioctl": "~1.0.0",
-    "nan": "~2.3.2",
-    "ref": "^1.3.5",
-    "ref-array": "^1.2.0",
-    "ref-struct": "^1.1.0"
+    "bindings": "^1.5.0",
+    "ioctl": "^2.0.2",
+    "nan": "^2.14.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^6.1.0"
   }
 }
