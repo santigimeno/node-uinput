@@ -11,7 +11,7 @@ npm install uinput
 ## Example
 
 ```
-const UInput = require('node-uinput');
+const UInput = require('uinput2');
 
 const SETUP_OPTIONS = {
     UI_SET_EVBIT:  [

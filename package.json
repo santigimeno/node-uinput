@@ -1,12 +1,12 @@
 {
-  "name": "uinput",
-  "version": "1.1.1",
+  "name": "uinput2",
+  "version": "1.0.0",
   "description": "Linux uinput module",
   "main": "index.js",
   "scripts": {
     "build": "node-gyp configure build"
   },
-  "repository": "https://github.com/santigimeno/node-uinput.git",
+  "repository": "https://github.com/timstableford/node-uinput.git",
   "keywords": [
     "uinput",
     "linux",
